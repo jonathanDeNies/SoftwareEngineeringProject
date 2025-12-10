@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace SoftwareEngineeringProject
 {
     class Animation
     {
-        public AnimationFrame CurrectFrame { get; set; }
+        public AnimationFrame CurrentFrame { get; set; }
         private List<AnimationFrame> frames;
         private int counter;
 
@@ -21,17 +22,26 @@ namespace SoftwareEngineeringProject
         public void AddFrame(AnimationFrame frame)
         {
             frames.Add(frame);
-            CurrectFrame = frames[0];
+            CurrentFrame = frames[0];
         }
 
-        public void Update()
+        private double secondCounter = 0;
+        public void Update(GameTime gameTime)
         {
-            CurrectFrame = frames[counter];
-            counter++;
+            CurrentFrame = frames[counter];
+            secondCounter += gameTime.ElapsedGameTime.TotalSeconds;
+            int fps = 15;
+            if (secondCounter >= 1d / fps)
+            {
+                counter++;
+                secondCounter = 0;
+            }
+
             if (counter >= frames.Count)
             {
                 counter = 0;
             }
+
         }
     }
 }

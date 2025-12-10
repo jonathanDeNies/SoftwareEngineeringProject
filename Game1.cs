@@ -46,7 +46,7 @@ namespace SoftwareEngineeringProject
                 Exit();
 
             // TODO: Add your update logic here
-            hero.Update();
+            hero.Update(gameTime);
             base.Update(gameTime);
         }
 

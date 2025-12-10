@@ -19,17 +19,17 @@ namespace SoftwareEngineeringProject
             animation.AddFrame(new AnimationFrame(new Rectangle(0, 0, 32, 32)));
             animation.AddFrame(new AnimationFrame(new Rectangle(32, 0, 32, 32)));
             animation.AddFrame(new AnimationFrame(new Rectangle(64, 0, 32, 32)));
-            animation.AddFrame(new AnimationFrame(new Rectangle(94, 0, 32, 32)));
+            animation.AddFrame(new AnimationFrame(new Rectangle(96, 0, 32, 32)));
         }
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(texture, new Vector2(0, 0), animation.CurrectFrame.SourceRectangle, Color.White);
+            spriteBatch.Draw(texture, new Vector2(0, 0), animation.CurrentFrame.SourceRectangle, Color.White);
         }
 
-        public void Update()
+        public void Update(GameTime gameTime)
         {
-            animation.Update();
+            animation.Update(gameTime);
         }
     }
 }
