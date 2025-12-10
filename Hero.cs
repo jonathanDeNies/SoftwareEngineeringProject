@@ -16,7 +16,8 @@ namespace SoftwareEngineeringProject
 
         private Vector2 positie = new Vector2(0, 0);
         private Vector2 snelheid = new Vector2(2,2);
-        
+        private Vector2 versnelling = new Vector2(0.1f, 0.1f);
+
 
         public Hero(Texture2D texture)
         {
@@ -42,16 +43,20 @@ namespace SoftwareEngineeringProject
         private void Move()
         {
             positie += snelheid;
+            snelheid += versnelling;
             if (positie.X > 768
                 || positie.X < 0)
             {
                 snelheid.X *= -1;
+                versnelling.X *= -1;
             }
             if (positie.Y > 448
                 || positie.Y < 0)
             {
                 snelheid.Y *= -1;
+                versnelling.Y *= -1;
             }
+
 
 
         }
