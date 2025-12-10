@@ -40,10 +40,23 @@ namespace SoftwareEngineeringProject
             Move();
         }
 
+        private Vector2 Limit(Vector2 v, float max)
+        {
+            if(v.Length() > max)
+            {
+                var ratio = max /v.Length();
+                v.X *= ratio;
+                v.Y *= ratio;
+            }
+            return v;
+        }
+
         private void Move()
         {
             positie += snelheid;
             snelheid += versnelling;
+            float maximaleSnelheid = 40;
+            snelheid = Limit(snelheid, maximaleSnelheid);
             if (positie.X > 768
                 || positie.X < 0)
             {
@@ -56,9 +69,6 @@ namespace SoftwareEngineeringProject
                 snelheid.Y *= -1;
                 versnelling.Y *= -1;
             }
-
-
-
         }
     }
 }
