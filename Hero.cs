@@ -1,6 +1,8 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using SoftwareEngineeringProject.Interfaces;
+using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 
@@ -37,7 +39,7 @@ namespace SoftwareEngineeringProject
         public void Update(GameTime gameTime)
         {
             animation.Update(gameTime);
-            Move();
+            MoveWithKeyboard(gameTime);
         }
 
         private Vector2 Limit(Vector2 v, float max)
@@ -51,6 +53,8 @@ namespace SoftwareEngineeringProject
             return v;
         }
 
+
+        //basis movement
         private void Move()
         {
             positie += snelheid;
@@ -69,6 +73,24 @@ namespace SoftwareEngineeringProject
                 snelheid.Y *= -1;
                 versnelling.Y *= -1;
             }
+        }
+
+        private void MoveWithKeyboard(GameTime gameTime)
+        {
+            KeyboardState state = Keyboard.GetState();
+            var direction = Vector2.Zero;
+            if (state.IsKeyDown(Keys.Left))
+            {
+                direction.X -= 1;
+            }
+            if (state.IsKeyDown(Keys.Right))
+            {
+                direction.X += 1;
+            }
+            direction *= snelheid;
+            positie += direction;
+
+            animation.Update(gameTime);
         }
     }
 }

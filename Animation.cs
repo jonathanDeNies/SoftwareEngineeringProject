@@ -30,7 +30,7 @@ namespace SoftwareEngineeringProject
         {
             CurrentFrame = frames[counter];
             secondCounter += gameTime.ElapsedGameTime.TotalSeconds;
-            int fps = 15;
+            int fps = 8;
             if (secondCounter >= 1d / fps)
             {
                 counter++;
