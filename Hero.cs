@@ -87,7 +87,6 @@ namespace SoftwareEngineeringProject
             {
                 direction.X += 1;
             }
-            // vertical movement
             if (state.IsKeyDown(Keys.Up))
             {
                 direction.Y -= 1;
@@ -96,8 +95,20 @@ namespace SoftwareEngineeringProject
             {
                 direction.Y += 1;
             }
+
             direction *= snelheid;
             positie += direction;
+
+            // de collision
+            var frame = animation.CurrentFrame.SourceRectangle;
+            int minX = 0;
+            int minY = 0;
+            int maxX = 700 - frame.Width;
+            int maxY = 700 - frame.Height;
+            if (positie.X < minX) positie.X = minX;
+            else if (positie.X > maxX) positie.X = maxX;
+            if (positie.Y < minY) positie.Y = minY;
+            else if (positie.Y > maxY) positie.Y = maxY;
 
             animation.Update(gameTime);
         }
