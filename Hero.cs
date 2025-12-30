@@ -87,6 +87,15 @@ namespace SoftwareEngineeringProject
             {
                 direction.X += 1;
             }
+            // vertical movement
+            if (state.IsKeyDown(Keys.Up))
+            {
+                direction.Y -= 1;
+            }
+            if (state.IsKeyDown(Keys.Down))
+            {
+                direction.Y += 1;
+            }
             direction *= snelheid;
             positie += direction;
 
