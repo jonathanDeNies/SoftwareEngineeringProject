@@ -5,7 +5,7 @@ using SoftwareEngineeringProject.Interfaces;
 using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
-
+using System.Collections.Generic;
 
 namespace SoftwareEngineeringProject
 {
@@ -20,6 +20,7 @@ namespace SoftwareEngineeringProject
         private Vector2 snelheid = new Vector2(2,2);
         private Vector2 versnelling = new Vector2(0.1f, 0.1f);
 
+        private const int HitboxHorizontalInset = 6;
 
         public Hero(Texture2D texture)
         {
@@ -77,7 +78,7 @@ namespace SoftwareEngineeringProject
             direction *= snelheid;
             positie += direction;
 
-            // de collision
+            // de collision with screen bounds (kept as final clamp, collisions with tiles handled separately)
             var frame = animation.CurrentFrame.SourceRectangle;
             int minX = 0;
             int minY = 0;
@@ -89,6 +90,66 @@ namespace SoftwareEngineeringProject
             else if (positie.Y > maxY) positie.Y = maxY;
 
             animation.Update(gameTime);
+        }
+
+        /// <summary>
+        /// Resolve overlaps with a set of collider rectangles. Uses an inset horizontal hitbox so the player
+        /// can get closer to tiles horizontally. Call after movement in Game1.Update.
+        /// </summary>
+        public void ResolveCollisions(IEnumerable<Rectangle> colliders)
+        {
+            if (colliders == null) return;
+
+            var frame = animation.CurrentFrame.SourceRectangle;
+
+            // Use an inset rectangle for collisions so horizontal hitbox is thinner than the sprite.
+            var bounds = new Rectangle(
+                (int)positie.X + HitboxHorizontalInset,
+                (int)positie.Y,
+                Math.Max(0, frame.Width - HitboxHorizontalInset * 2),
+                frame.Height);
+
+            foreach (var c in colliders)
+            {
+                if (!bounds.Intersects(c)) continue;
+
+                var inter = Rectangle.Intersect(bounds, c);
+                if (inter.Width == 0 || inter.Height == 0) continue;
+
+                // push out on the smaller penetration axis
+                if (inter.Width < inter.Height)
+                {
+                    // horizontal push
+                    if (bounds.Center.X < c.Center.X)
+                    {
+                        // move hero left by penetration amount (adjusting by inset keeps sprite flush with tile)
+                        positie.X -= inter.Width;
+                    }
+                    else
+                    {
+                        positie.X += inter.Width;
+                    }
+                }
+                else
+                {
+                    // vertical push
+                    if (bounds.Center.Y < c.Center.Y)
+                    {
+                        positie.Y -= inter.Height;
+                    }
+                    else
+                    {
+                        positie.Y += inter.Height;
+                    }
+                }
+
+                // update bounds after moving
+                bounds = new Rectangle(
+                    (int)positie.X + HitboxHorizontalInset,
+                    (int)positie.Y,
+                    Math.Max(0, frame.Width - HitboxHorizontalInset * 2),
+                    frame.Height);
+            }
         }
     }
 }
