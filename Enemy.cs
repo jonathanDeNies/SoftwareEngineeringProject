@@ -15,7 +15,7 @@ namespace SoftwareEngineeringProject
         private bool wrap; // true = wrap around, false = bounce between borders
 
         // wrap defaults to true for backward compatibility
-        public Enemy(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = true)
+        public Enemy(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
         {
             this.texture = texture;
             this.speed = speed;
@@ -66,6 +66,7 @@ namespace SoftwareEngineeringProject
 
         public void Draw(SpriteBatch spriteBatch)
         {
+            var effects = speed < 0 ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
             spriteBatch.Draw(texture, position, animation.CurrentFrame.SourceRectangle, Color.White);
         }
     }

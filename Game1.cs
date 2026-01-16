@@ -19,11 +19,6 @@ namespace SoftwareEngineeringProject
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }
-        
-
-
-        private Rectangle deelRectangle;
-        private int schuifOp_X = 0;
         Hero hero;
         List<Enemy> enemies;
 
@@ -44,14 +39,8 @@ namespace SoftwareEngineeringProject
             texture = Content.Load<Texture2D>("characters (1)");
             hero = new Hero(texture);
 
-            // create some enemies that use other characters from the same sprite sheet
-            enemies = new List<Enemy>();
-
-            // Move the enemies.Add calls into the factory so spawn logic is centralized
-            //enemies.Add(new Enemy(texture, new Vector2(0, 100), 1.5f, 0, 33));
-            //enemies.Add(new Enemy(texture, new Vector2(0, 200), 2.0f, 0, 65));
-            //enemies.Add(new Enemy(texture, new Vector2(0, 300), 1.0f, 0, 97));
-            EnemyFactory.PopulateDefaultEnemies(enemies, texture);
+            //enemies = new List<Enemy>();
+            //EnemyFactory.PopulateDefaultEnemies(enemies, texture);
         }
 
         protected override void Update(GameTime gameTime)
@@ -82,7 +71,6 @@ namespace SoftwareEngineeringProject
             spriteBatch.End();
 
             // TODO: Add your drawing code here
-
             base.Draw(gameTime);
         }
     }

@@ -53,28 +53,6 @@ namespace SoftwareEngineeringProject
             return v;
         }
 
-
-        //basis movement
-        private void Move()
-        {
-            positie += snelheid;
-            snelheid += versnelling;
-            float maximaleSnelheid = 40;
-            snelheid = Limit(snelheid, maximaleSnelheid);
-            if (positie.X > 768
-                || positie.X < 0)
-            {
-                snelheid.X *= -1;
-                versnelling.X *= -1;
-            }
-            if (positie.Y > 448
-                || positie.Y < 0)
-            {
-                snelheid.Y *= -1;
-                versnelling.Y *= -1;
-            }
-        }
-
         private void MoveWithKeyboard(GameTime gameTime)
         {
             KeyboardState state = Keyboard.GetState();
