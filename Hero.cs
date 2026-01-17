@@ -14,34 +14,32 @@ namespace SoftwareEngineeringProject
 
         private Animation animation;
 
-        // visual position and physical velocity (pixels)
+        // visual position and physical velocity
         private Vector2 positie = new Vector2(0, 0);
         private Vector2 velocity = Vector2.Zero;
 
-        // movement/physics tuning (pixels / second, pixels / second^2)
+        // movement/physics tuning
         private const float MoveSpeed = 120f;
-        // gravity reduced from 900f -> 700f for a slightly floatier jump
         private const float Gravity = 700f;
         private const float JumpVelocity = 360f;
         private const float TerminalVelocity = 900f;
 
-        // hitbox insets to align visual sprite with physics
+        // hitbox insets
         private const int HitboxHorizontalInset = 6;
         private const int HitboxTopInset = 3;
         private const int HitboxBottomInset = 0;
 
-        // input tracking to detect single-press jump
         private KeyboardState previousKeyboardState;
-
-        // state
         private bool isGrounded;
 
-        // Backwards-compatible ctor
+        // Optional: Jump buffering (improves "feel")
+        private float jumpBufferTime = 0f;
+        private const float MaxJumpBuffer = 0.15f; // 150ms window
+
         public Hero(Texture2D texture)
             : this(texture, new Rectangle(0, 0, 700, 700))
         { }
 
-        // Preferred ctor: supply the world bounds so clamping uses current viewport/camera
         public Hero(Texture2D texture, Rectangle worldBounds)
         {
             this.texture = texture ?? throw new ArgumentNullException(nameof(texture));
@@ -62,49 +60,63 @@ namespace SoftwareEngineeringProject
         public void Update(GameTime gameTime)
         {
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            // handle input
             var kb = Keyboard.GetState();
+
+            // 1. Handle Horizontal Movement
             int dirX = 0;
             if (kb.IsKeyDown(Keys.Left)) dirX -= 1;
             if (kb.IsKeyDown(Keys.Right)) dirX += 1;
-
-            // horizontal velocity is immediate (no acceleration model here)
             velocity.X = dirX * MoveSpeed;
 
-            // jump: on key press and only when grounded
-            bool jumpPressed = kb.IsKeyDown(Keys.Space);
-            bool jumpJustPressed = jumpPressed && previousKeyboardState.IsKeyUp(Keys.Space);
-            if (jumpJustPressed && isGrounded)
+            // 2. Handle Jump Input & Buffering
+            if (kb.IsKeyDown(Keys.Space) && previousKeyboardState.IsKeyUp(Keys.Space))
             {
-                // preserve horizontal velocity — jumping while moving is allowed
-                velocity.Y = -JumpVelocity;
-                isGrounded = false;
+                jumpBufferTime = MaxJumpBuffer;
             }
 
-            // apply (reduced) gravity
+            if (jumpBufferTime > 0)
+            {
+                jumpBufferTime -= dt;
+                if (isGrounded)
+                {
+                    velocity.Y = -JumpVelocity;
+                    isGrounded = false;
+                    jumpBufferTime = 0;
+                }
+            }
+
+            // 3. Apply Gravity
             velocity.Y += Gravity * dt;
             if (velocity.Y > TerminalVelocity) velocity.Y = TerminalVelocity;
 
-            // integrate position
+            // 4. Integrate Position
             positie += velocity * dt;
 
-            // clamp to world bounds using sprite frame size
-            var frame = animation.CurrentFrame.SourceRectangle;
-            int maxX = worldBounds.Right - frame.Width;
-            int maxY = worldBounds.Bottom - frame.Height;
-            if (positie.X < worldBounds.X) positie.X = worldBounds.X;
-            else if (positie.X > maxX) positie.X = maxX;
-            if (positie.Y < worldBounds.Y) positie.Y = worldBounds.Y;
-            else if (positie.Y > maxY) positie.Y = maxY;
+            // 5. World Bounds Clamping
+            ClampToWorld();
 
             animation.Update(gameTime);
-
-            // store keyboard state for next frame
             previousKeyboardState = kb;
         }
 
-        // expose collision rectangle for debugging / drawing
+        private void ClampToWorld()
+        {
+            var frame = animation.CurrentFrame.SourceRectangle;
+            int maxX = worldBounds.Right - frame.Width;
+            int maxY = worldBounds.Bottom - frame.Height;
+
+            if (positie.X < worldBounds.X) positie.X = worldBounds.X;
+            else if (positie.X > maxX) positie.X = maxX;
+
+            if (positie.Y < worldBounds.Y) positie.Y = worldBounds.Y;
+            else if (positie.Y > maxY)
+            {
+                positie.Y = maxY;
+                velocity.Y = 0;
+                isGrounded = true; // Touching the bottom of the world counts as grounded
+            }
+        }
+
         public Rectangle GetCollisionBounds()
         {
             var frame = animation.CurrentFrame.SourceRectangle;
@@ -115,18 +127,12 @@ namespace SoftwareEngineeringProject
                 Math.Max(0, frame.Height - HitboxTopInset - HitboxBottomInset));
         }
 
-        /// <summary>
-        /// Resolve overlaps with tile colliders. Should be called after Update().
-        /// This resolves axis-penetration and updates velocity/isGrounded accordingly.
-        /// </summary>
         public void ResolveCollisions(IEnumerable<Rectangle> colliders)
         {
             if (colliders == null) return;
 
-            // start assuming not grounded; landing detection will set this true
-            isGrounded = false;
-
-            var frame = animation.CurrentFrame.SourceRectangle;
+            // We use a local variable to track grounding during the loop
+            bool foundGroundThisFrame = false;
             var bounds = GetCollisionBounds();
 
             foreach (var c in colliders)
@@ -138,49 +144,29 @@ namespace SoftwareEngineeringProject
 
                 if (inter.Width < inter.Height)
                 {
-                    // horizontal penetration: push out on X and zero horizontal velocity
-                    if (bounds.Center.X < c.Center.X)
-                    {
-                        // push left
-                        positie.X -= inter.Width;
-                    }
-                    else
-                    {
-                        // push right
-                        positie.X += inter.Width;
-                    }
-
+                    if (bounds.Center.X < c.Center.X) positie.X -= inter.Width;
+                    else positie.X += inter.Width;
                     velocity.X = 0f;
                 }
                 else
                 {
-                    // vertical penetration: push out on Y and zero vertical velocity
-                    if (bounds.Center.Y < c.Center.Y)
+                    if (bounds.Center.Y < c.Center.Y) // Landed on top
                     {
-                        // hero is above collider -> landed on top
                         positie.Y -= inter.Height;
                         velocity.Y = 0f;
-                        isGrounded = true;
+                        foundGroundThisFrame = true;
                     }
-                    else
+                    else // Hit head
                     {
-                        // hero is below collider -> hit head
                         positie.Y += inter.Height;
                         velocity.Y = 0f;
                     }
                 }
-
-                // update collision bounds after adjustment
                 bounds = GetCollisionBounds();
             }
 
-            // final clamp to world bounds
-            int maxX = worldBounds.Right - frame.Width;
-            int maxY = worldBounds.Bottom - frame.Height;
-            if (positie.X < worldBounds.X) positie.X = worldBounds.X;
-            else if (positie.X > maxX) positie.X = maxX;
-            if (positie.Y < worldBounds.Y) positie.Y = worldBounds.Y;
-            else if (positie.Y > maxY) positie.Y = maxY;
+            isGrounded = foundGroundThisFrame;
+            ClampToWorld();
         }
     }
 }
