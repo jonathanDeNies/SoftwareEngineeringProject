@@ -3,28 +3,50 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SoftwareEngineeringProject.Interfaces;
 using System;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 using System.Collections.Generic;
 
 namespace SoftwareEngineeringProject
 {
-    internal class Hero: IGameObject
+    internal class Hero : IGameObject
     {
-        private Texture2D texture;
-        Animation animation;
-        
-        private int schuifOp_X = 0;
+        private readonly Texture2D texture;
+        private readonly Rectangle worldBounds;
 
+        private Animation animation;
+
+        // visual position and physical velocity (pixels)
         private Vector2 positie = new Vector2(0, 0);
-        private Vector2 snelheid = new Vector2(2,2);
-        private Vector2 versnelling = new Vector2(0.1f, 0.1f);
+        private Vector2 velocity = Vector2.Zero;
 
+        // movement/physics tuning (pixels / second, pixels / second^2)
+        private const float MoveSpeed = 120f;
+        // gravity reduced from 900f -> 700f for a slightly floatier jump
+        private const float Gravity = 700f;
+        private const float JumpVelocity = 360f;
+        private const float TerminalVelocity = 900f;
+
+        // hitbox insets to align visual sprite with physics
         private const int HitboxHorizontalInset = 6;
+        private const int HitboxTopInset = 3;
+        private const int HitboxBottomInset = 0;
 
+        // input tracking to detect single-press jump
+        private KeyboardState previousKeyboardState;
+
+        // state
+        private bool isGrounded;
+
+        // Backwards-compatible ctor
         public Hero(Texture2D texture)
+            : this(texture, new Rectangle(0, 0, 700, 700))
+        { }
+
+        // Preferred ctor: supply the world bounds so clamping uses current viewport/camera
+        public Hero(Texture2D texture, Rectangle worldBounds)
         {
-            this.texture = texture;
+            this.texture = texture ?? throw new ArgumentNullException(nameof(texture));
+            this.worldBounds = worldBounds;
+
             animation = new Animation();
             animation.AddFrame(new AnimationFrame(new Rectangle(0, 0, 32, 32)));
             animation.AddFrame(new AnimationFrame(new Rectangle(32, 0, 32, 32)));
@@ -39,75 +61,73 @@ namespace SoftwareEngineeringProject
 
         public void Update(GameTime gameTime)
         {
-            animation.Update(gameTime);
-            MoveWithKeyboard(gameTime);
-        }
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        private Vector2 Limit(Vector2 v, float max)
-        {
-            if(v.Length() > max)
-            {
-                var ratio = max /v.Length();
-                v.X *= ratio;
-                v.Y *= ratio;
-            }
-            return v;
-        }
+            // handle input
+            var kb = Keyboard.GetState();
+            int dirX = 0;
+            if (kb.IsKeyDown(Keys.Left)) dirX -= 1;
+            if (kb.IsKeyDown(Keys.Right)) dirX += 1;
 
-        private void MoveWithKeyboard(GameTime gameTime)
-        {
-            KeyboardState state = Keyboard.GetState();
-            var direction = Vector2.Zero;
-            if (state.IsKeyDown(Keys.Left))
+            // horizontal velocity is immediate (no acceleration model here)
+            velocity.X = dirX * MoveSpeed;
+
+            // jump: on key press and only when grounded
+            bool jumpPressed = kb.IsKeyDown(Keys.Space);
+            bool jumpJustPressed = jumpPressed && previousKeyboardState.IsKeyUp(Keys.Space);
+            if (jumpJustPressed && isGrounded)
             {
-                direction.X -= 1;
-            }
-            if (state.IsKeyDown(Keys.Right))
-            {
-                direction.X += 1;
-            }
-            if (state.IsKeyDown(Keys.Up))
-            {
-                direction.Y -= 1;
-            }
-            if (state.IsKeyDown(Keys.Down))
-            {
-                direction.Y += 1;
+                // preserve horizontal velocity — jumping while moving is allowed
+                velocity.Y = -JumpVelocity;
+                isGrounded = false;
             }
 
-            direction *= snelheid;
-            positie += direction;
+            // apply (reduced) gravity
+            velocity.Y += Gravity * dt;
+            if (velocity.Y > TerminalVelocity) velocity.Y = TerminalVelocity;
 
-            // de collision with screen bounds (kept as final clamp, collisions with tiles handled separately)
+            // integrate position
+            positie += velocity * dt;
+
+            // clamp to world bounds using sprite frame size
             var frame = animation.CurrentFrame.SourceRectangle;
-            int minX = 0;
-            int minY = 0;
-            int maxX = 700 - frame.Width;
-            int maxY = 700 - frame.Height;
-            if (positie.X < minX) positie.X = minX;
+            int maxX = worldBounds.Right - frame.Width;
+            int maxY = worldBounds.Bottom - frame.Height;
+            if (positie.X < worldBounds.X) positie.X = worldBounds.X;
             else if (positie.X > maxX) positie.X = maxX;
-            if (positie.Y < minY) positie.Y = minY;
+            if (positie.Y < worldBounds.Y) positie.Y = worldBounds.Y;
             else if (positie.Y > maxY) positie.Y = maxY;
 
             animation.Update(gameTime);
+
+            // store keyboard state for next frame
+            previousKeyboardState = kb;
+        }
+
+        // expose collision rectangle for debugging / drawing
+        public Rectangle GetCollisionBounds()
+        {
+            var frame = animation.CurrentFrame.SourceRectangle;
+            return new Rectangle(
+                (int)positie.X + HitboxHorizontalInset,
+                (int)positie.Y + HitboxTopInset,
+                Math.Max(0, frame.Width - HitboxHorizontalInset * 2),
+                Math.Max(0, frame.Height - HitboxTopInset - HitboxBottomInset));
         }
 
         /// <summary>
-        /// Resolve overlaps with a set of collider rectangles. Uses an inset horizontal hitbox so the player
-        /// can get closer to tiles horizontally. Call after movement in Game1.Update.
+        /// Resolve overlaps with tile colliders. Should be called after Update().
+        /// This resolves axis-penetration and updates velocity/isGrounded accordingly.
         /// </summary>
         public void ResolveCollisions(IEnumerable<Rectangle> colliders)
         {
             if (colliders == null) return;
 
-            var frame = animation.CurrentFrame.SourceRectangle;
+            // start assuming not grounded; landing detection will set this true
+            isGrounded = false;
 
-            // Use an inset rectangle for collisions so horizontal hitbox is thinner than the sprite.
-            var bounds = new Rectangle(
-                (int)positie.X + HitboxHorizontalInset,
-                (int)positie.Y,
-                Math.Max(0, frame.Width - HitboxHorizontalInset * 2),
-                frame.Height);
+            var frame = animation.CurrentFrame.SourceRectangle;
+            var bounds = GetCollisionBounds();
 
             foreach (var c in colliders)
             {
@@ -116,40 +136,51 @@ namespace SoftwareEngineeringProject
                 var inter = Rectangle.Intersect(bounds, c);
                 if (inter.Width == 0 || inter.Height == 0) continue;
 
-                // push out on the smaller penetration axis
                 if (inter.Width < inter.Height)
                 {
-                    // horizontal push
+                    // horizontal penetration: push out on X and zero horizontal velocity
                     if (bounds.Center.X < c.Center.X)
                     {
-                        // move hero left by penetration amount (adjusting by inset keeps sprite flush with tile)
+                        // push left
                         positie.X -= inter.Width;
                     }
                     else
                     {
+                        // push right
                         positie.X += inter.Width;
                     }
+
+                    velocity.X = 0f;
                 }
                 else
                 {
-                    // vertical push
+                    // vertical penetration: push out on Y and zero vertical velocity
                     if (bounds.Center.Y < c.Center.Y)
                     {
+                        // hero is above collider -> landed on top
                         positie.Y -= inter.Height;
+                        velocity.Y = 0f;
+                        isGrounded = true;
                     }
                     else
                     {
+                        // hero is below collider -> hit head
                         positie.Y += inter.Height;
+                        velocity.Y = 0f;
                     }
                 }
 
-                // update bounds after moving
-                bounds = new Rectangle(
-                    (int)positie.X + HitboxHorizontalInset,
-                    (int)positie.Y,
-                    Math.Max(0, frame.Width - HitboxHorizontalInset * 2),
-                    frame.Height);
+                // update collision bounds after adjustment
+                bounds = GetCollisionBounds();
             }
+
+            // final clamp to world bounds
+            int maxX = worldBounds.Right - frame.Width;
+            int maxY = worldBounds.Bottom - frame.Height;
+            if (positie.X < worldBounds.X) positie.X = worldBounds.X;
+            else if (positie.X > maxX) positie.X = maxX;
+            if (positie.Y < worldBounds.Y) positie.Y = worldBounds.Y;
+            else if (positie.Y > maxY) positie.Y = maxY;
         }
     }
 }
