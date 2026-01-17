@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections.Generic;
 
 namespace SoftwareEngineeringProject
 {
@@ -14,10 +15,10 @@ namespace SoftwareEngineeringProject
         private int spriteStartY;
         private bool wrap; // true = wrap around, false = bounce between borders
 
-        // wrap defaults to true for backward compatibility
+        // wrap defaults to false for bounce behaviour
         public Enemy(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
         {
-            this.texture = texture;
+            this.texture = texture ?? throw new ArgumentNullException(nameof(texture));
             this.speed = speed;
             this.position = startPosition;
             this.spriteStartX = spriteStartX;
@@ -31,33 +32,75 @@ namespace SoftwareEngineeringProject
             animation.AddFrame(new AnimationFrame(new Rectangle(spriteStartX + 96, spriteStartY, 32, 32)));
         }
 
-        public void Update(GameTime gameTime)
+        /// <summary>
+        /// Update enemy position and handle bounce/wrap.
+        /// If <paramref name="colliders"/> is provided, the enemy will treat them as solid walls and reverse direction on horizontal collision.
+        /// Otherwise behavior falls back to screen-edge bounce/wrap (using <paramref name="screenWidth"/>).
+        /// </summary>
+        public void Update(GameTime gameTime, int screenWidth, IEnumerable<Rectangle>? colliders = null)
         {
-            position.X += speed;
-            var frameWidth = animation.CurrentFrame.SourceRectangle.Width;
-            int screenWidth = 700; // matches Game1 preferred back buffer
+            var frame = animation.CurrentFrame.SourceRectangle;
+            int frameWidth = frame.Width;
+            int frameHeight = frame.Height;
 
-            if (wrap)
+            // proposed new X after movement
+            float nextX = position.X + speed;
+            var nextBounds = new Rectangle((int)nextX, (int)position.Y, frameWidth, frameHeight);
+
+            var collided = false;
+
+            if (colliders != null)
             {
-                // wrap around when reaching the right edge
-                if (position.X > screenWidth)
+                foreach (var c in colliders)
                 {
-                    position.X = -frameWidth;
+                    if (nextBounds.Intersects(c))
+                    {
+                        // horizontal collision with a tile: place enemy outside and reverse direction
+                        if (speed > 0)
+                        {
+                            // moving right -> align right edge to tile's left
+                            position.X = c.Left - frameWidth;
+                        }
+                        else
+                        {
+                            // moving left -> align left edge to tile's right
+                            position.X = c.Right;
+                        }
+
+                        speed = -speed;
+                        collided = true;
+                        break;
+                    }
                 }
             }
-            else
+
+            if (!collided)
             {
-                // bounce between left and right borders
-                int maxX = screenWidth - frameWidth;
-                if (position.X > maxX)
+                // no tile collision — apply movement and fall back to screen bounce/wrap logic
+                position.X = nextX;
+
+                if (wrap)
                 {
-                    position.X = maxX;
-                    speed = -Math.Abs(speed);
+                    // wrap around when reaching the right edge
+                    if (position.X > screenWidth)
+                    {
+                        position.X = -frameWidth;
+                    }
                 }
-                else if (position.X < 0)
+                else
                 {
-                    position.X = 0;
-                    speed = Math.Abs(speed);
+                    // bounce between left and right borders
+                    int maxX = screenWidth - frameWidth;
+                    if (position.X > maxX)
+                    {
+                        position.X = maxX;
+                        speed = -Math.Abs(speed);
+                    }
+                    else if (position.X < 0)
+                    {
+                        position.X = 0;
+                        speed = Math.Abs(speed);
+                    }
                 }
             }
 
@@ -66,8 +109,9 @@ namespace SoftwareEngineeringProject
 
         public void Draw(SpriteBatch spriteBatch)
         {
+            // flip horizontally when moving left (speed < 0)
             var effects = speed < 0 ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-            spriteBatch.Draw(texture, position, animation.CurrentFrame.SourceRectangle, Color.White);
+            spriteBatch.Draw(texture, position, animation.CurrentFrame.SourceRectangle, Color.White, 0f, Vector2.Zero, 1f, effects, 0f);
         }
     }
 }

@@ -1,36 +1,55 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Numerics;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace SoftwareEngineeringProject
 {
     internal static class EnemyFactory
     {
-        /// <summary>
-        /// Adds the project's default enemies to the provided list.
-        /// The factory calls `enemies.Add(...)` so callers do not need to construct or add enemies directly.
-        /// </summary>
-        public static void PopulateDefaultEnemies(List<Enemy> enemies, Texture2D texture)
+        public enum EnemyKind
         {
-            if (enemies is null) throw new ArgumentNullException(nameof(enemies));
-            if (texture is null) throw new ArgumentNullException(nameof(texture));
-
-            // These match the original placements/speeds from Game1.LoadContent
-            enemies.Add(new Enemy(texture, new Vector2(0, 100), 1.5f, 0, 33));
-            enemies.Add(new Enemy(texture, new Vector2(0, 200), 2.0f, 0, 65));
-            enemies.Add(new Enemy(texture, new Vector2(0, 300), 1.0f, 0, 97));
+            Basic,
+            Fast,
+            Snake
         }
 
-        /// <summary>
-        /// Helper to add a custom enemy directly to the list.
-        /// </summary>
-        public static void AddCustom(List<Enemy> enemies, Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = true)
+        public readonly struct EnemySpec
         {
-            if (enemies is null) throw new ArgumentNullException(nameof(enemies));
-            if (texture is null) throw new ArgumentNullException(nameof(texture));
+            public EnemyKind Kind { get; }
+            public Vector2 StartPosition { get; }
 
-            enemies.Add(new Enemy(texture, startPosition, speed, spriteStartX, spriteStartY, wrap));
+            public EnemySpec(EnemyKind kind, Vector2 startPosition)
+            {
+                Kind = kind;
+                StartPosition = startPosition;
+            }
         }
+
+        public static Enemy Create(EnemyKind kind, Texture2D texture, Vector2 startPosition)
+        {
+            if (texture == null) throw new ArgumentNullException(nameof(texture));
+
+            return kind switch
+            {
+                EnemyKind.Basic => new Enemy(texture, startPosition, 1.5f, 0, 33, wrap: false),
+                EnemyKind.Fast  => new Enemy(texture, startPosition, 2.5f, 0, 65, wrap: false),
+                EnemyKind.Snake => new Enemy(texture, startPosition, 1.0f, 0, 97, wrap: false),
+                _ => throw new ArgumentOutOfRangeException(nameof(kind))
+            };
+        }
+
+        public static void SpawnMany(List<Enemy> target, Texture2D texture, params EnemySpec[] specs)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (texture == null) throw new ArgumentNullException(nameof(texture));
+            if (specs == null) return;
+
+            foreach (var s in specs)
+                target.Add(Create(s.Kind, texture, s.StartPosition));
+        }
+
+        public static Enemy CreateCustom(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
+            => new Enemy(texture, startPosition, speed, spriteStartX, spriteStartY, wrap);
     }
 }
