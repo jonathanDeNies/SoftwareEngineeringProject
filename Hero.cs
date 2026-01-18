@@ -12,17 +12,14 @@ namespace SoftwareEngineeringProject
         private readonly Texture2D texture;
         private readonly Animation animation;
 
-        // visual position is owned by PhysicsBody now
         private readonly PhysicsBody physics;
 
-        // sprite / hitbox tuning (kept here so Hero still controls sprite-related values)
         private const int HitboxHorizontalInset = 6;
-        private const int HitboxTopInset = 3;
+        private const int HitboxTopInset = 12;
         private const int HitboxBottomInset = 0;
 
         private SpriteEffects facing = SpriteEffects.None;
 
-        // Backwards-compatible ctor
         public Hero(Texture2D texture)
             : this(texture, new Rectangle(0, 0, 700, 700))
         { }
@@ -36,7 +33,6 @@ namespace SoftwareEngineeringProject
             animation.AddFrame(new AnimationFrame(new Rectangle(64, 0, 32, 32)));
             animation.AddFrame(new AnimationFrame(new Rectangle(96, 0, 32, 32)));
 
-            // create the physics body and move physics responsibilities there
             physics = new PhysicsBody(
                 startPosition: Vector2.Zero,
                 worldBounds: worldBounds,
@@ -66,25 +62,21 @@ namespace SoftwareEngineeringProject
             var keyboardState = Keyboard.GetState();
             physics.Update(gameTime, keyboardState);
 
-            // update facing direction based on horizontal velocity
             if (physics.Velocity.X > 0.05f)
-                facing = SpriteEffects.None; // facing right
+                facing = SpriteEffects.None;
             else if (physics.Velocity.X < -0.05f)
-                facing = SpriteEffects.FlipHorizontally; // facing left
+                facing = SpriteEffects.FlipHorizontally; 
 
             bool isMoving = Math.Abs(physics.Velocity.X) > 0.05f;
             animation.Update(gameTime, isMoving);
         }
 
-
-        // expose collision rectangle for debug/tuning (delegates to physics)
         public Rectangle GetCollisionBounds()
         {
             var frame = animation.CurrentFrame.SourceRectangle;
             return physics.GetCollisionBounds(frame.Width, frame.Height);
         }
 
-        // delegate collision resolution to physics body (call after Update)
         public void ResolveCollisions(IEnumerable<Rectangle> solidColliders, IEnumerable<Rectangle> oneWayColliders)
         {
             var frame = animation.CurrentFrame.SourceRectangle;
@@ -99,6 +91,10 @@ namespace SoftwareEngineeringProject
         public void SetWorldBounds(Rectangle bounds)
         {
             physics.SetWorldBounds(bounds);
+        }
+        public void SetJumpMultiplier(float multiplier)
+        {
+            physics.SetJumpMultiplier(multiplier);
         }
     }
 }
