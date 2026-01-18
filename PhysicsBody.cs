@@ -12,6 +12,7 @@ namespace SoftwareEngineeringProject
     internal sealed class PhysicsBody
     {
         private Vector2 position;
+        private Vector2 previousPosition;
         private Vector2 velocity;
         private Rectangle worldBounds;
 
@@ -36,7 +37,7 @@ namespace SoftwareEngineeringProject
             Rectangle worldBounds,
             float moveSpeed = 175f,
             float gravity = 1150f,
-            float jumpVelocity = 360f,
+            float jumpVelocity = 400f,
             float terminalVelocity = 900f,
             int hitboxHorizontalInset = 6,
             int hitboxTopInset = 3,
@@ -44,6 +45,7 @@ namespace SoftwareEngineeringProject
             float maxJumpBuffer = 0.15f)
         {
             this.position = startPosition;
+            this.previousPosition = startPosition;
             this.worldBounds = worldBounds;
             this.moveSpeed = moveSpeed;
             this.gravity = gravity;
@@ -69,6 +71,9 @@ namespace SoftwareEngineeringProject
         public void Update(GameTime gameTime, KeyboardState keyboard)
         {
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // store previous position for one-way platform checks
+            previousPosition = position;
 
             // Horizontal input
             int dirX = 0;
@@ -102,7 +107,6 @@ namespace SoftwareEngineeringProject
             position += velocity * dt;
 
             // Clamp to world rectangle (sprite size needed by caller if clamping must use sprite dims)
-            // We keep general clamping using worldBounds origin; caller can re-clamp after supplying sprite size.
             if (position.X < worldBounds.X) position.X = worldBounds.X;
             if (position.Y < worldBounds.Y) position.Y = worldBounds.Y;
 
@@ -121,62 +125,99 @@ namespace SoftwareEngineeringProject
                 Math.Max(0, frameHeight - hitboxTopInset - hitboxBottomInset));
         }
 
+        private Rectangle GetCollisionBoundsAt(Vector2 pos, int frameWidth, int frameHeight)
+        {
+            return new Rectangle(
+                (int)pos.X + hitboxHorizontalInset,
+                (int)pos.Y + hitboxTopInset,
+                Math.Max(0, frameWidth - hitboxHorizontalInset * 2),
+                Math.Max(0, frameHeight - hitboxTopInset - hitboxBottomInset));
+        }
+
         /// <summary>
         /// Resolve axis-penetration against tile colliders. Call after Update().
-        /// frameWidth/frameHeight are required to compute the collision rectangle used for resolution.
-        /// Updates internal position, velocity and grounded state.
+        /// Accepts full-solid colliders and one-way platform colliders (passable from below).
         /// </summary>
-        public void ResolveCollisions(IEnumerable<Rectangle> colliders, int frameWidth, int frameHeight)
+        public void ResolveCollisions(IEnumerable<Rectangle> solidColliders, IEnumerable<Rectangle> oneWayColliders, int frameWidth, int frameHeight)
         {
-            if (colliders == null) return;
+            if (solidColliders == null && oneWayColliders == null) return;
 
             bool foundGroundThisFrame = false;
             var bounds = GetCollisionBounds(frameWidth, frameHeight);
+            var prevBounds = GetCollisionBoundsAt(previousPosition, frameWidth, frameHeight);
 
-            foreach (var c in colliders)
+            // 1) resolve against full solid tiles (same behavior as before)
+            if (solidColliders != null)
             {
-                if (!bounds.Intersects(c)) continue;
-
-                var inter = Rectangle.Intersect(bounds, c);
-                if (inter.Width == 0 || inter.Height == 0) continue;
-
-                if (inter.Width < inter.Height)
+                foreach (var c in solidColliders)
                 {
-                    // horizontal penetration
-                    if (bounds.Center.X < c.Center.X)
+                    if (!bounds.Intersects(c)) continue;
+
+                    var inter = Rectangle.Intersect(bounds, c);
+                    if (inter.Width == 0 || inter.Height == 0) continue;
+
+                    if (inter.Width < inter.Height)
                     {
-                        // push left
-                        position.X -= inter.Width;
+                        // horizontal penetration
+                        if (bounds.Center.X < c.Center.X)
+                            position.X -= inter.Width;
+                        else
+                            position.X += inter.Width;
+
+                        velocity.X = 0f;
                     }
                     else
                     {
-                        // push right
-                        position.X += inter.Width;
+                        // vertical penetration
+                        if (bounds.Center.Y < c.Center.Y)
+                        {
+                            // landed on top
+                            position.Y -= inter.Height;
+                            velocity.Y = 0f;
+                            foundGroundThisFrame = true;
+                        }
+                        else
+                        {
+                            // hit head
+                            position.Y += inter.Height;
+                            velocity.Y = 0f;
+                        }
                     }
 
-                    // stop horizontal movement
-                    velocity.X = 0f;
+                    // update bounds after correction
+                    bounds = GetCollisionBounds(frameWidth, frameHeight);
+                    prevBounds = GetCollisionBoundsAt(previousPosition, frameWidth, frameHeight);
                 }
-                else
+            }
+
+            // 2) resolve one-way platforms: only when coming from above (previous bottom <= platform top) and falling
+            if (oneWayColliders != null)
+            {
+                foreach (var p in oneWayColliders)
                 {
-                    // vertical penetration
-                    if (bounds.Center.Y < c.Center.Y)
+                    // only consider if we are overlapping now
+                    if (!bounds.Intersects(p)) continue;
+
+                    // only block if we were above the platform in the previous frame and are moving down (or stationary)
+                    if (prevBounds.Bottom <= p.Top && velocity.Y >= 0f)
                     {
-                        // landed on top
-                        position.Y -= inter.Height;
+                        // compute collision height (intersection)
+                        var inter = Rectangle.Intersect(bounds, p);
+                        if (inter.Height == 0) continue;
+
+                        // push out vertically so collision box sits on top of platform
+                        // place position so that collision bounds bottom equals platform top:
+                        int boundsHeight = frameHeight - hitboxTopInset - hitboxBottomInset;
+                        position.Y = p.Top - boundsHeight - hitboxTopInset;
+
                         velocity.Y = 0f;
                         foundGroundThisFrame = true;
-                    }
-                    else
-                    {
-                        // hit head
-                        position.Y += inter.Height;
-                        velocity.Y = 0f;
+
+                        // refresh bounds after change
+                        bounds = GetCollisionBounds(frameWidth, frameHeight);
+                        prevBounds = GetCollisionBoundsAt(previousPosition, frameWidth, frameHeight);
                     }
                 }
-
-                // update bounds after correction (important when multiple colliders overlap)
-                bounds = GetCollisionBounds(frameWidth, frameHeight);
             }
 
             isGrounded = foundGroundThisFrame;
@@ -199,5 +240,10 @@ namespace SoftwareEngineeringProject
         /// Allows external code to set world bounds (useful if viewport changes).
         /// </summary>
         public void SetWorldBounds(Rectangle bounds) => worldBounds = bounds;
+
+        public void StopHorizontalMovement()
+        {
+            velocity.X = 0f;
+        }
     }
 }

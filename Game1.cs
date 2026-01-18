@@ -108,8 +108,14 @@ namespace SoftwareEngineeringProject
 
             Debug.WriteLine($"textureAtlas size = {textureAtlas.Width} x {textureAtlas.Height}");
 
-            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 39, 40, 41, 50, 51, 52, 61, 62, 63 };
-            tileCollider = new TileCollider(map, DisplayTileSize, solid);
+            // existing solid set (keep only truly solid tiles)
+            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 39, 40, 41, 50, 51, 52, 105,106,107, 127, 128, 129, 149, 150, 151 };
+
+            // define which tile indices are one-way platforms (example)
+            var oneWay = new HashSet<int> { 61, 62, 63 };
+
+            // pass both sets to the TileCollider ctor
+            tileCollider = new TileCollider(map, DisplayTileSize, solid, oneWay);
 
             // create enemy list and spawn only the enemies you want
             enemies = new List<Enemy>();
@@ -137,16 +143,16 @@ namespace SoftwareEngineeringProject
             // resolve hero collisions against colliders owned by TileCollider
             if (tileCollider != null)
             {
-                hero.ResolveCollisions(tileCollider.Colliders);
+                hero.ResolveCollisions(tileCollider.SolidColliders, tileCollider.OneWayColliders);
             }
 
             if (enemies != null)
             {
                 int screenWidth = GraphicsDevice.Viewport.Width;
                 // pass tile collider colliders (if tileCollider is null we pass null)
-                var colliders = tileCollider?.Colliders;
+                var solidColliders = tileCollider?.SolidColliders;
                 foreach (var e in enemies)
-                    e.Update(gameTime, screenWidth, colliders);
+                    e.Update(gameTime, screenWidth, solidColliders);
             }
             base.Update(gameTime);
         }

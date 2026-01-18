@@ -5,14 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace SoftwareEngineeringProject
 {
-    internal static class EnemyFactory
+    internal static partial class EnemyFactory
     {
-        public enum EnemyKind
-        {
-            Basic,
-            Fast,
-            Snake
-        }
 
         public readonly struct EnemySpec
         {

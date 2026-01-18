@@ -1,33 +1,36 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace SoftwareEngineeringProject
 {
     /// <summary>
     /// Encapsulates which tile indices are solid and produces collider rectangles
-    /// from a map. Game1 no longer needs to build or own the collider list.
+    /// from a map. Supports full-solid tiles and one-way platforms (passable from below).
     /// </summary>
     internal sealed class TileCollider
     {
-        private readonly List<Rectangle> colliders = new();
-
-        public IReadOnlyList<Rectangle> Colliders => colliders;
-
+        private readonly List<Rectangle> solidColliders = new();
+        private readonly List<Rectangle> oneWayColliders = new();
         private Dictionary<Vector2, int> map;
         private readonly int tileSize;
         private readonly HashSet<int> solidTiles;
+        private readonly HashSet<int> oneWayTiles;
 
-        public TileCollider(Dictionary<Vector2, int> map, int tileSize, IEnumerable<int> solidTiles)
+        public TileCollider(Dictionary<Vector2, int> map, int tileSize, IEnumerable<int> solidTiles, IEnumerable<int> oneWayTiles)
         {
             this.map = map ?? throw new ArgumentNullException(nameof(map));
             if (tileSize <= 0) throw new ArgumentOutOfRangeException(nameof(tileSize));
             this.tileSize = tileSize;
             this.solidTiles = new HashSet<int>(solidTiles ?? throw new ArgumentNullException(nameof(solidTiles)));
+            this.oneWayTiles = new HashSet<int>(oneWayTiles ?? throw new ArgumentNullException(nameof(oneWayTiles)));
 
             BuildColliders();
         }
+
+        public IReadOnlyList<Rectangle> SolidColliders => solidColliders;
+        public IReadOnlyList<Rectangle> OneWayColliders => oneWayColliders;
 
         public void UpdateMap(Dictionary<Vector2, int> newMap)
         {
@@ -37,31 +40,22 @@ namespace SoftwareEngineeringProject
 
         public void BuildColliders()
         {
-            colliders.Clear();
+            solidColliders.Clear();
+            oneWayColliders.Clear();
 
             foreach (var kv in map)
             {
-                if (solidTiles.Contains(kv.Value))
-                {
-                    var rect = new Rectangle(
-                        (int)kv.Key.X * tileSize,
-                        (int)kv.Key.Y * tileSize,
-                        tileSize,
-                        tileSize);
-                    colliders.Add(rect);
-                }
-            }
-        }
+                var v = kv.Value;
+                var rect = new Rectangle(
+                    (int)kv.Key.X * tileSize,
+                    (int)kv.Key.Y * tileSize,
+                    tileSize,
+                    tileSize);
 
-        // optional: debug draw helper (call from Game1.Draw while spriteBatch.Begin)
-        public void DrawDebug(SpriteBatch spriteBatch, Texture2D pixel, Color color)
-        {
-            if (spriteBatch is null) throw new ArgumentNullException(nameof(spriteBatch));
-            if (pixel is null) throw new ArgumentNullException(nameof(pixel));
-
-            foreach (var r in colliders)
-            {
-                spriteBatch.Draw(pixel, r, color);
+                if (solidTiles.Contains(v))
+                    solidColliders.Add(rect);
+                else if (oneWayTiles.Contains(v))
+                    oneWayColliders.Add(rect);
             }
         }
     }
