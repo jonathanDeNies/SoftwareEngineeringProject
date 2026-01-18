@@ -49,17 +49,31 @@ namespace SoftwareEngineeringProject
             var collider = new TileCollider(map, displayTileSize, solidTiles, oneWayTiles);
 
             var enemies = new List<Enemy>();
+
             if (levelKey == "level1")
             {
                 var snakeTile = new Vector2(19, 10);
                 var snakePosition = new Vector2(snakeTile.X * displayTileSize, snakeTile.Y * displayTileSize);
                 enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Snake, heroTexture, snakePosition));
             }
+            else if (levelKey == "level2")
+            {
+                
+                var e1Tile = new Vector2(4, 18);
+                var e2Tile = new Vector2(13, 12);
+
+                var e1Pos = new Vector2(e1Tile.X * displayTileSize, e1Tile.Y * displayTileSize);
+                var e2Pos = new Vector2(e2Tile.X * displayTileSize, e2Tile.Y * displayTileSize);
+
+                
+                enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Basic, heroTexture, e1Pos));
+                enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Fast, heroTexture, e2Pos));
+            }
 
             var exit = def.ExitTriggerPixels;
             var nextKey = def.NextLevelKey ?? "";
 
-            // Jump boosts (level2 only)
+            
             var jumpBoosts = new List<JumpBoost>();
             if (levelKey == "level2")
             {
@@ -73,7 +87,6 @@ namespace SoftwareEngineeringProject
                 }
             }
             
-            // Quit / StartOver triggers (scan the map for matching tile IDs)
             var quitTriggers = new List<Rectangle>();
             var startOverTriggers = new List<Rectangle>();
 
