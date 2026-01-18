@@ -27,22 +27,18 @@ namespace SoftwareEngineeringProject
 
         private double secondCounter = 0;
 
-        // Only advance the animation when isMoving == true.
-        // When not moving we reset to the first (idle) frame.
         public void Update(GameTime gameTime, bool isMoving)
         {
             if (frames.Count == 0) return;
 
             if (!isMoving)
             {
-                // show idle frame when not moving
                 counter = 0;
                 secondCounter = 0;
                 CurrentFrame = frames[0];
                 return;
             }
 
-            // moving -> advance animation as before
             secondCounter += gameTime.ElapsedGameTime.TotalSeconds;
             int fps = 8;
             double interval = 1d / fps;

@@ -58,14 +58,12 @@ namespace SoftwareEngineeringProject
             }
             else if (levelKey == "level2")
             {
-                
-                var e1Tile = new Vector2(4, 18);
-                var e2Tile = new Vector2(13, 12);
+                var e1Tile = new Vector2(4, 22);
+                var e2Tile = new Vector2(10, 11);
 
                 var e1Pos = new Vector2(e1Tile.X * displayTileSize, e1Tile.Y * displayTileSize);
                 var e2Pos = new Vector2(e2Tile.X * displayTileSize, e2Tile.Y * displayTileSize);
 
-                
                 enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Basic, heroTexture, e1Pos));
                 enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Fast, heroTexture, e2Pos));
             }

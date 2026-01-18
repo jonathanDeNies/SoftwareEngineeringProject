@@ -5,10 +5,6 @@ using System.Collections.Generic;
 
 namespace SoftwareEngineeringProject
 {
-    /// <summary>
-    /// Encapsulates movement, gravity, jumping and collision resolution for a single body.
-    /// Hero will compose this instead of owning physics logic itself.
-    /// </summary>
     internal sealed class PhysicsBody
     {
         private Vector2 position;

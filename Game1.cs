@@ -47,7 +47,6 @@ namespace SoftwareEngineeringProject
             graphics.PreferredBackBufferHeight = Math.Min(requiredHeight, MaxHeight);
             graphics.ApplyChanges();
 
-            // keep physics clamping correct for the current viewport
             hero.SetWorldBounds(GraphicsDevice.Viewport.Bounds);
         }
 
@@ -95,9 +94,8 @@ namespace SoftwareEngineeringProject
             var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35, 36, 39, 40, 41, 50, 51, 52, 57, 58, 100, 101, 102, 105, 106, 107, 127, 128, 129, 149, 150, 151, 188, 189, 190, 191, 233, 234 };
             var oneWay = new HashSet<int> { 61, 62, 63 };
 
-            // tiles that trigger quit/restart (from your gameover map)
-            var gameOver = new HashSet<int> { 123, 124, 145, 146 };        // stone box area
-            var startOver = new HashSet<int> { 216, 217, 238, 239 };       // gold box area
+            var gameOver = new HashSet<int> { 123, 124, 145, 146 };
+            var startOver = new HashSet<int> { 216, 217, 238, 239 };
 
             levelManager = new LevelManager(DisplayTileSize, levels, solid, oneWay, gameOver, startOver);
 
@@ -143,11 +141,9 @@ namespace SoftwareEngineeringProject
                 }
             }
 
-            // --- pickups (only exist in level2, list will just be empty otherwise) ---
             foreach (var jb in current.JumpBoosts)
                 jb.TryCollect(hero);
 
-            // --- transitions (level1 -> level2) ---
             if (levelManager.TryTransition(hero))
             {
                 var nextKey = current.NextLevelKey;
@@ -156,9 +152,8 @@ namespace SoftwareEngineeringProject
                 current = levelManager.Current;
             }
 
-            // Only trigger during real gameplay levels
             if (levelManager.CurrentKey != "gameover" &&
-                levelManager.CurrentKey != "level2") // optional: exclude level2 if you want
+                levelManager.CurrentKey != "level2")
             {
                 int gameOverY = 16 * DisplayTileSize;
 
@@ -170,7 +165,6 @@ namespace SoftwareEngineeringProject
                 }
             }
 
-            // --- enemies update (gameover has none; list will be empty) ---
             int screenWidth = GraphicsDevice.Viewport.Width;
             var solidColliders = current.TileCollider.SolidColliders;
             foreach (var e in current.Enemies)
@@ -182,12 +176,8 @@ namespace SoftwareEngineeringProject
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
-
             spriteBatch.Begin();
-
             var current = levelManager.Current;
-
-            // draw map
             int displayTileSize = DisplayTileSize;
             int pixelTileSize = 16;
             int tilesPerRow = textureAtlas.Width / pixelTileSize;
@@ -214,11 +204,9 @@ namespace SoftwareEngineeringProject
                 spriteBatch.Draw(textureAtlas, drect, src, Color.White);
             }
 
-            // draw pickups
             foreach (var jb in current.JumpBoosts)
                 jb.Draw(spriteBatch, itemTexture);
 
-            // draw hero/enemies (you said you want to run around even in gameover)
             hero.Draw(spriteBatch);
             foreach (var e in current.Enemies)
                 e.Draw(spriteBatch);

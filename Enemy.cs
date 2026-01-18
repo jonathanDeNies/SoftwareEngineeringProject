@@ -13,12 +13,10 @@ namespace SoftwareEngineeringProject
         private float speed;
         private int spriteStartX;
         private int spriteStartY;
-        private bool wrap; // true = wrap around, false = bounce between borders
+        private bool wrap;
 
-        // Add an activation flag so movement can be toggled externally
         public bool IsActive { get; set; } = true;
-
-        // wrap defaults to false for bounce behaviour
+        
         public Enemy(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
         {
             this.texture = texture ?? throw new ArgumentNullException(nameof(texture));
@@ -34,15 +32,9 @@ namespace SoftwareEngineeringProject
             animation.AddFrame(new AnimationFrame(new Rectangle(spriteStartX + 64, spriteStartY, 32, 32)));
             animation.AddFrame(new AnimationFrame(new Rectangle(spriteStartX + 96, spriteStartY, 32, 32)));
         }
-
-        /// <summary>
-        /// Update enemy position and handle bounce/wrap.
-        /// If <paramref name="colliders"/> is provided, the enemy will treat them as solid walls and reverse direction on horizontal collision.
-        /// Otherwise behavior falls back to screen-edge bounce/wrap (using <paramref name="screenWidth"/>).
-        /// </summary>
         public void Update(GameTime gameTime, int screenWidth, IEnumerable<Rectangle>? colliders = null)
         {
-            // If the enemy is not active, do not move; still update animation with isMoving=false
+           
             if (!IsActive)
             {
                 animation.Update(gameTime, false);
@@ -53,7 +45,6 @@ namespace SoftwareEngineeringProject
             int frameWidth = frame.Width;
             int frameHeight = frame.Height;
 
-            // proposed new X after movement
             float nextX = position.X + speed;
             var nextBounds = new Rectangle((int)nextX, (int)position.Y, frameWidth, frameHeight);
 
@@ -65,15 +56,12 @@ namespace SoftwareEngineeringProject
                 {
                     if (nextBounds.Intersects(c))
                     {
-                        // horizontal collision with a tile: place enemy outside and reverse direction
                         if (speed > 0)
                         {
-                            // moving right -> align right edge to tile's left
                             position.X = c.Left - frameWidth;
                         }
                         else
                         {
-                            // moving left -> align left edge to tile's right
                             position.X = c.Right;
                         }
 
@@ -86,12 +74,10 @@ namespace SoftwareEngineeringProject
 
             if (!collided)
             {
-                // no tile collision — apply movement and fall back to screen bounce/wrap logic
                 position.X = nextX;
 
                 if (wrap)
                 {
-                    // wrap around when reaching the right edge
                     if (position.X > screenWidth)
                     {
                         position.X = -frameWidth;
@@ -99,7 +85,6 @@ namespace SoftwareEngineeringProject
                 }
                 else
                 {
-                    // bounce between left and right borders
                     int maxX = screenWidth - frameWidth;
                     if (position.X > maxX)
                     {
@@ -114,14 +99,12 @@ namespace SoftwareEngineeringProject
                 }
             }
 
-            // Pass isMoving argument to Animation.Update
             bool isMoving = speed != 0;
             animation.Update(gameTime, isMoving);
         }
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            // flip horizontally when moving left (speed < 0)
             var effects = speed < 0 ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
             spriteBatch.Draw(texture, position, animation.CurrentFrame.SourceRectangle, Color.White, 0f, Vector2.Zero, 1f, effects, 0f);
         }
