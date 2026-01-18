@@ -81,15 +81,15 @@ namespace SoftwareEngineeringProject
                 ),
 
                 ["level2"] = new LevelDefinition(
-                    csvPath: "../../../Data/level2.csv",
-                    spawnPixels: new Vector2(32, 32),
+                    csvPath: "../../../Data/level2_Terrain.csv",
+                    spawnPixels: new Vector2(0, 710),
                     exitTriggerPixels: Rectangle.Empty,
                     nextLevelKey: null
                 )
             };
 
             // Solid / one-way sets
-            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 39, 40, 41, 50, 51, 52, 105, 106, 107, 127, 128, 129, 149, 150, 151 };
+            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35,36, 39, 40, 41, 50, 51, 52, 57,58, 105, 106, 107, 127, 128, 129, 149, 150, 151 };
             var oneWay = new HashSet<int> { 61, 62, 63 };
 
             // Create level manager
