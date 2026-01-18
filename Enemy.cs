@@ -15,6 +15,9 @@ namespace SoftwareEngineeringProject
         private int spriteStartY;
         private bool wrap; // true = wrap around, false = bounce between borders
 
+        // Add an activation flag so movement can be toggled externally
+        public bool IsActive { get; set; } = true;
+
         // wrap defaults to false for bounce behaviour
         public Enemy(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
         {
@@ -39,6 +42,13 @@ namespace SoftwareEngineeringProject
         /// </summary>
         public void Update(GameTime gameTime, int screenWidth, IEnumerable<Rectangle>? colliders = null)
         {
+            // If the enemy is not active, do not move; still update animation with isMoving=false
+            if (!IsActive)
+            {
+                animation.Update(gameTime, false);
+                return;
+            }
+
             var frame = animation.CurrentFrame.SourceRectangle;
             int frameWidth = frame.Width;
             int frameHeight = frame.Height;
@@ -104,7 +114,9 @@ namespace SoftwareEngineeringProject
                 }
             }
 
-            animation.Update(gameTime);
+            // Pass isMoving argument to Animation.Update
+            bool isMoving = speed != 0;
+            animation.Update(gameTime, isMoving);
         }
 
         public void Draw(SpriteBatch spriteBatch)
