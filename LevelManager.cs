@@ -12,6 +12,8 @@ namespace SoftwareEngineeringProject
 
         private readonly HashSet<int> solidTiles;
         private readonly HashSet<int> oneWayTiles;
+        private readonly HashSet<int> quitTiles;
+        private readonly HashSet<int> startOverTiles;
 
         public IReadOnlyDictionary<string, LevelDefinition> Levels => levels;
         private readonly Dictionary<string, LevelDefinition> levels;
@@ -23,12 +25,17 @@ namespace SoftwareEngineeringProject
             int displayTileSize,
             Dictionary<string, LevelDefinition> levels,
             HashSet<int> solidTiles,
-            HashSet<int> oneWayTiles)
+            HashSet<int> oneWayTiles,
+            HashSet<int> quitTiles,
+            HashSet<int> startOverTiles)
+
         {
             this.displayTileSize = displayTileSize;
             this.levels = levels;
             this.solidTiles = solidTiles;
             this.oneWayTiles = oneWayTiles;
+            this.quitTiles = quitTiles;
+            this.startOverTiles = startOverTiles;
         }
 
         public void Load(string levelKey, Hero hero, Texture2D heroTexture, Rectangle worldBounds)
@@ -52,28 +59,56 @@ namespace SoftwareEngineeringProject
             var exit = def.ExitTriggerPixels;
             var nextKey = def.NextLevelKey ?? "";
 
-            var itemPositions = new List<Vector2>();
-
+            // Jump boosts (level2 only)
+            var jumpBoosts = new List<JumpBoost>();
             if (levelKey == "level2")
             {
-                // IMPORTANT: use the real filename including .csv
                 var itemsLayer = LoadCsvLayer("../../../Data/level2_Items.csv");
+                var appleSrc = new Rectangle(0, 0, 16, 16);
 
                 foreach (var kv in itemsLayer)
                 {
-                    itemPositions.Add(new Vector2(kv.Key.X * displayTileSize, kv.Key.Y * displayTileSize));
+                    var posPixels = new Vector2(kv.Key.X * displayTileSize, kv.Key.Y * displayTileSize);
+                    jumpBoosts.Add(new JumpBoost(posPixels, displayTileSize, 1.3f, appleSrc));
                 }
+            }
+            
+            // Quit / StartOver triggers (scan the map for matching tile IDs)
+            var quitTriggers = new List<Rectangle>();
+            var startOverTriggers = new List<Rectangle>();
+
+            foreach (var kv in map)
+            {
+                int tileId = kv.Value;
+
+                bool isQuit = quitTiles.Contains(tileId);
+                bool isStartOver = startOverTiles.Contains(tileId);
+
+                if (!isQuit && !isStartOver)
+                    continue;
+
+                var rect = new Rectangle(
+                    (int)kv.Key.X * displayTileSize,
+                    (int)kv.Key.Y * displayTileSize,
+                    displayTileSize,
+                    displayTileSize
+                );
+
+                if (isQuit) quitTriggers.Add(rect);
+                if (isStartOver) startOverTriggers.Add(rect);
             }
 
             Current = new LevelState(
                 map, widthTiles, heightTiles,
                 collider, enemies,
-                itemPositions,
+                jumpBoosts,
+                quitTriggers, startOverTriggers,
                 exit, nextKey
             );
 
             hero.Respawn(def.SpawnPixels);
         }
+
 
         public bool TryTransition(Hero hero)
         {

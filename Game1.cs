@@ -14,12 +14,11 @@ namespace SoftwareEngineeringProject
 
         private const int DisplayTileSize = 32;
 
-        private Texture2D texture;        
+        private Texture2D texture;
         private Texture2D textureAtlas;
         private Texture2D itemTexture;
 
         private Hero hero;
-
         private LevelManager levelManager;
 
         public Game1()
@@ -47,6 +46,8 @@ namespace SoftwareEngineeringProject
             graphics.PreferredBackBufferWidth = Math.Min(requiredWidth, MaxWidth);
             graphics.PreferredBackBufferHeight = Math.Min(requiredHeight, MaxHeight);
             graphics.ApplyChanges();
+
+            // keep physics clamping correct for the current viewport
             hero.SetWorldBounds(GraphicsDevice.Viewport.Bounds);
         }
 
@@ -56,12 +57,12 @@ namespace SoftwareEngineeringProject
 
             texture = Content.Load<Texture2D>("characters (1)");
             textureAtlas = Content.Load<Texture2D>("Terrain (16x16)");
+            itemTexture = Content.Load<Texture2D>("Apple");
 
             Debug.WriteLine($"textureAtlas size = {textureAtlas.Width} x {textureAtlas.Height}");
 
             hero = new Hero(texture, GraphicsDevice.Viewport.Bounds);
 
-            
             var levels = new Dictionary<string, LevelDefinition>
             {
                 ["level1"] = new LevelDefinition(
@@ -81,39 +82,95 @@ namespace SoftwareEngineeringProject
                     spawnPixels: new Vector2(0, 710),
                     exitTriggerPixels: Rectangle.Empty,
                     nextLevelKey: null
-                )
+                ),
+
+                ["gameover"] = new LevelDefinition(
+                    csvPath: "../../../Data/GameOver.csv",
+                    spawnPixels: new Vector2(256, 480),
+                    exitTriggerPixels: Rectangle.Empty,
+                    nextLevelKey: null
+                ),
             };
 
-            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35,36, 39, 40, 41, 50, 51, 52, 57,58, 105, 106, 107, 127, 128, 129, 149, 150, 151 };
+            var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35, 36, 39, 40, 41, 50, 51, 52, 57, 58, 100, 101, 102, 105, 106, 107, 127, 128, 129, 149, 150, 151, 188, 189, 190, 191, 233, 234 };
             var oneWay = new HashSet<int> { 61, 62, 63 };
 
-            levelManager = new LevelManager(DisplayTileSize, levels, solid, oneWay);
+            // tiles that trigger quit/restart (from your gameover map)
+            var gameOver = new HashSet<int> { 123, 124, 145, 146 };        // stone box area
+            var startOver = new HashSet<int> { 216, 217, 238, 239 };       // gold box area
+
+            levelManager = new LevelManager(DisplayTileSize, levels, solid, oneWay, gameOver, startOver);
 
             levelManager.Load("level1", hero, texture, GraphicsDevice.Viewport.Bounds);
-
-            itemTexture = Content.Load<Texture2D>("Apple");
-
             ApplyBackbufferForCurrentMap();
         }
 
         protected override void Update(GameTime gameTime)
         {
+            var ks = Keyboard.GetState();
+
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-                Keyboard.GetState().IsKeyDown(Keys.Escape))
+                ks.IsKeyDown(Keys.Escape))
                 Exit();
 
             hero.Update(gameTime);
 
             var current = levelManager.Current;
+
             hero.ResolveCollisions(current.TileCollider.SolidColliders, current.TileCollider.OneWayColliders);
 
+            var heroRect = hero.GetCollisionBounds();
+            if (heroRect != Rectangle.Empty)
+            {
+                
+                foreach (var r in current.QuitTriggers)
+                {
+                    if (heroRect.Intersects(r))
+                    {
+                        Exit();
+                        return;
+                    }
+                }
+
+                foreach (var r in current.StartOverTriggers)
+                {
+                    if (heroRect.Intersects(r))
+                    {
+                        levelManager.Load("level1", hero, texture, GraphicsDevice.Viewport.Bounds);
+                        ApplyBackbufferForCurrentMap();
+                        return;
+                    }
+                }
+            }
+
+            // --- pickups (only exist in level2, list will just be empty otherwise) ---
+            foreach (var jb in current.JumpBoosts)
+                jb.TryCollect(hero);
+
+            // --- transitions (level1 -> level2) ---
             if (levelManager.TryTransition(hero))
             {
                 var nextKey = current.NextLevelKey;
                 levelManager.Load(nextKey, hero, texture, GraphicsDevice.Viewport.Bounds);
                 ApplyBackbufferForCurrentMap();
+                current = levelManager.Current;
             }
 
+            // Only trigger during real gameplay levels
+            if (levelManager.CurrentKey != "gameover" &&
+                levelManager.CurrentKey != "level2") // optional: exclude level2 if you want
+            {
+                int gameOverY = 16 * DisplayTileSize;
+
+                if (heroRect.Bottom >= gameOverY)
+                {
+                    levelManager.Load("gameover", hero, texture, GraphicsDevice.Viewport.Bounds);
+                    ApplyBackbufferForCurrentMap();
+                    return;
+                }
+            }
+
+            // --- enemies update (gameover has none; list will be empty) ---
             int screenWidth = GraphicsDevice.Viewport.Width;
             var solidColliders = current.TileCollider.SolidColliders;
             foreach (var e in current.Enemies)
@@ -125,10 +182,12 @@ namespace SoftwareEngineeringProject
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
+
             spriteBatch.Begin();
 
             var current = levelManager.Current;
 
+            // draw map
             int displayTileSize = DisplayTileSize;
             int pixelTileSize = 16;
             int tilesPerRow = textureAtlas.Width / pixelTileSize;
@@ -155,19 +214,11 @@ namespace SoftwareEngineeringProject
                 spriteBatch.Draw(textureAtlas, drect, src, Color.White);
             }
 
-            Rectangle appleSrc = new Rectangle(0, 0, 32, 32);
+            // draw pickups
+            foreach (var jb in current.JumpBoosts)
+                jb.Draw(spriteBatch, itemTexture);
 
-            foreach (var pos in levelManager.Current.ItemPositionsPixels)
-            {
-                spriteBatch.Draw(
-                    itemTexture,
-                    new Rectangle((int)pos.X, (int)pos.Y, DisplayTileSize, DisplayTileSize),
-                    appleSrc,
-                    Color.White
-                );
-            }
-
-
+            // draw hero/enemies (you said you want to run around even in gameover)
             hero.Draw(spriteBatch);
             foreach (var e in current.Enemies)
                 e.Draw(spriteBatch);

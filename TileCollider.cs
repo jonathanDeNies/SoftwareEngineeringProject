@@ -5,10 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace SoftwareEngineeringProject
 {
-    /// <summary>
-    /// Encapsulates which tile indices are solid and produces collider rectangles
-    /// from a map. Supports full-solid tiles and one-way platforms (passable from below).
-    /// </summary>
     internal sealed class TileCollider
     {
         private readonly List<Rectangle> solidColliders = new();
