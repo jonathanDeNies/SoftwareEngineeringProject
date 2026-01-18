@@ -11,7 +11,7 @@ namespace SoftwareEngineeringProject
     {
         public string CsvPath { get; }
         public Vector2 SpawnPixels { get; }
-        public Rectangle ExitTriggerPixels { get; }   // where touching loads next level
+        public Rectangle ExitTriggerPixels { get; }
         public string? NextLevelKey { get; }
 
         public LevelDefinition(string csvPath, Vector2 spawnPixels, Rectangle exitTriggerPixels, string? nextLevelKey)

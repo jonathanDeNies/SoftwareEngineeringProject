@@ -14,12 +14,15 @@ namespace SoftwareEngineeringProject
         public int MapWidthTiles { get; }
         public int MapHeightTiles { get; }
 
+        public List<Vector2> ItemPositionsPixels { get; }
+
         public LevelState(
             Dictionary<Vector2, int> map,
             int mapWidthTiles,
             int mapHeightTiles,
             TileCollider tileCollider,
             List<Enemy> enemies,
+            List<Vector2> itemPositionsPixels,
             Rectangle exitTrigger,
             string nextLevelKey)
         {
@@ -28,8 +31,10 @@ namespace SoftwareEngineeringProject
             MapHeightTiles = mapHeightTiles;
             TileCollider = tileCollider;
             Enemies = enemies;
+            ItemPositionsPixels = itemPositionsPixels;
             ExitTrigger = exitTrigger;
             NextLevelKey = nextLevelKey;
         }
+
     }
 }

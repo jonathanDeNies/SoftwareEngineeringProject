@@ -38,13 +38,9 @@ namespace SoftwareEngineeringProject
 
             CurrentKey = levelKey;
 
-            // Load map
             var map = LoadMap(def.CsvPath, out int widthTiles, out int heightTiles);
-
-            // Build collider
             var collider = new TileCollider(map, displayTileSize, solidTiles, oneWayTiles);
 
-            // Enemies per level (keep your existing behavior, but moved here)
             var enemies = new List<Enemy>();
             if (levelKey == "level1")
             {
@@ -53,17 +49,30 @@ namespace SoftwareEngineeringProject
                 enemies.Add(EnemyFactory.Create(EnemyFactory.EnemyKind.Snake, heroTexture, snakePosition));
             }
 
-            // Setup current state
             var exit = def.ExitTriggerPixels;
             var nextKey = def.NextLevelKey ?? "";
 
-            Current = new LevelState(map, widthTiles, heightTiles, collider, enemies, exit, nextKey);
+            var itemPositions = new List<Vector2>();
 
-            // Respawn hero at spawn
+            if (levelKey == "level2")
+            {
+                // IMPORTANT: use the real filename including .csv
+                var itemsLayer = LoadCsvLayer("../../../Data/level2_Items.csv");
+
+                foreach (var kv in itemsLayer)
+                {
+                    itemPositions.Add(new Vector2(kv.Key.X * displayTileSize, kv.Key.Y * displayTileSize));
+                }
+            }
+
+            Current = new LevelState(
+                map, widthTiles, heightTiles,
+                collider, enemies,
+                itemPositions,
+                exit, nextKey
+            );
+
             hero.Respawn(def.SpawnPixels);
-
-            // Update world bounds (if your window/viewport changes later you can call this again)
-            // (Hero ctor already got world bounds; physics body has SetWorldBounds too if needed.)
         }
 
         public bool TryTransition(Hero hero)
@@ -75,10 +84,7 @@ namespace SoftwareEngineeringProject
             var heroRect = hero.GetCollisionBounds();
             if (heroRect == Rectangle.Empty) return false;
 
-            if (heroRect.Intersects(Current.ExitTrigger))
-                return true;
-
-            return false;
+            return heroRect.Intersects(Current.ExitTrigger);
         }
 
         private Dictionary<Vector2, int> LoadMap(string filepath, out int widthTiles, out int heightTiles)
@@ -99,16 +105,33 @@ namespace SoftwareEngineeringProject
 
                 for (int x = 0; x < items.Length; x++)
                 {
-                    if (int.TryParse(items[x], out int value))
-                    {
-                        if (value != -1)
-                            result[new Vector2(x, y)] = value;
-                    }
+                    if (int.TryParse(items[x], out int value) && value != -1)
+                        result[new Vector2(x, y)] = value;
                 }
                 y++;
             }
 
             heightTiles = y;
+            return result;
+        }
+
+        private Dictionary<Vector2, int> LoadCsvLayer(string filepath)
+        {
+            var result = new Dictionary<Vector2, int>();
+            using var reader = new StreamReader(filepath);
+
+            int y = 0;
+            string line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                var items = line.Split(',');
+                for (int x = 0; x < items.Length; x++)
+                {
+                    if (int.TryParse(items[x], out int value) && value != -1)
+                        result[new Vector2(x, y)] = value;
+                }
+                y++;
+            }
             return result;
         }
     }

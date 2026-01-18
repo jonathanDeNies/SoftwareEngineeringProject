@@ -14,9 +14,9 @@ namespace SoftwareEngineeringProject
 
         private const int DisplayTileSize = 32;
 
-        private Texture2D texture;        // hero/enemy spritesheet
-        private Texture2D textureAtlas;   // tileset
-        private Texture2D debugPixel;
+        private Texture2D texture;        
+        private Texture2D textureAtlas;
+        private Texture2D itemTexture;
 
         private Hero hero;
 
@@ -54,18 +54,14 @@ namespace SoftwareEngineeringProject
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            debugPixel = new Texture2D(GraphicsDevice, 1, 1);
-            debugPixel.SetData(new[] { Color.White });
-
             texture = Content.Load<Texture2D>("characters (1)");
             textureAtlas = Content.Load<Texture2D>("Terrain (16x16)");
 
             Debug.WriteLine($"textureAtlas size = {textureAtlas.Width} x {textureAtlas.Height}");
 
-            // Create hero once
             hero = new Hero(texture, GraphicsDevice.Viewport.Bounds);
 
-            // Define your levels
+            
             var levels = new Dictionary<string, LevelDefinition>
             {
                 ["level1"] = new LevelDefinition(
@@ -88,17 +84,15 @@ namespace SoftwareEngineeringProject
                 )
             };
 
-            // Solid / one-way sets
             var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35,36, 39, 40, 41, 50, 51, 52, 57,58, 105, 106, 107, 127, 128, 129, 149, 150, 151 };
             var oneWay = new HashSet<int> { 61, 62, 63 };
 
-            // Create level manager
             levelManager = new LevelManager(DisplayTileSize, levels, solid, oneWay);
 
-            // Load first level
             levelManager.Load("level1", hero, texture, GraphicsDevice.Viewport.Bounds);
 
-            // Resize window based on level size (optional)
+            itemTexture = Content.Load<Texture2D>("Apple");
+
             ApplyBackbufferForCurrentMap();
         }
 
@@ -110,11 +104,9 @@ namespace SoftwareEngineeringProject
 
             hero.Update(gameTime);
 
-            // Collisions against current level
             var current = levelManager.Current;
             hero.ResolveCollisions(current.TileCollider.SolidColliders, current.TileCollider.OneWayColliders);
 
-            // Transition check
             if (levelManager.TryTransition(hero))
             {
                 var nextKey = current.NextLevelKey;
@@ -122,7 +114,6 @@ namespace SoftwareEngineeringProject
                 ApplyBackbufferForCurrentMap();
             }
 
-            // Enemies update
             int screenWidth = GraphicsDevice.Viewport.Width;
             var solidColliders = current.TileCollider.SolidColliders;
             foreach (var e in current.Enemies)
@@ -138,7 +129,6 @@ namespace SoftwareEngineeringProject
 
             var current = levelManager.Current;
 
-            // Draw map
             int displayTileSize = DisplayTileSize;
             int pixelTileSize = 16;
             int tilesPerRow = textureAtlas.Width / pixelTileSize;
@@ -165,16 +155,22 @@ namespace SoftwareEngineeringProject
                 spriteBatch.Draw(textureAtlas, drect, src, Color.White);
             }
 
-            // Draw hero + enemies
+            Rectangle appleSrc = new Rectangle(0, 0, 32, 32);
+
+            foreach (var pos in levelManager.Current.ItemPositionsPixels)
+            {
+                spriteBatch.Draw(
+                    itemTexture,
+                    new Rectangle((int)pos.X, (int)pos.Y, DisplayTileSize, DisplayTileSize),
+                    appleSrc,
+                    Color.White
+                );
+            }
+
+
             hero.Draw(spriteBatch);
             foreach (var e in current.Enemies)
                 e.Draw(spriteBatch);
-
-            // Debug exit trigger
-            if (current.ExitTrigger != Rectangle.Empty)
-            {
-                spriteBatch.Draw(debugPixel, current.ExitTrigger, Color.Red * 0.35f);
-            }
 
             spriteBatch.End();
             base.Draw(gameTime);
