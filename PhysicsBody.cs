@@ -236,14 +236,21 @@ namespace SoftwareEngineeringProject
             }
         }
 
-        /// <summary>
-        /// Allows external code to set world bounds (useful if viewport changes).
-        /// </summary>
-        public void SetWorldBounds(Rectangle bounds) => worldBounds = bounds;
-
         public void StopHorizontalMovement()
         {
             velocity.X = 0f;
         }
+
+        public void Reset(Vector2 startPosition)
+        {
+            position = startPosition;
+            previousPosition = startPosition;
+            velocity = Vector2.Zero;
+            isGrounded = false;
+            jumpBufferTime = 0f;
+            previousKeyboardState = new KeyboardState();
+        }
+
+        public void SetWorldBounds(Rectangle bounds) => worldBounds = bounds;
     }
 }

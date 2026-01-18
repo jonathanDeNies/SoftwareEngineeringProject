@@ -90,5 +90,15 @@ namespace SoftwareEngineeringProject
             var frame = animation.CurrentFrame.SourceRectangle;
             physics.ResolveCollisions(solidColliders, oneWayColliders, frame.Width, frame.Height);
         }
+
+        public void Respawn(Vector2 spawnPixels)
+        {
+            physics.Reset(spawnPixels);
+        }
+
+        public void SetWorldBounds(Rectangle bounds)
+        {
+            physics.SetWorldBounds(bounds);
+        }
     }
 }

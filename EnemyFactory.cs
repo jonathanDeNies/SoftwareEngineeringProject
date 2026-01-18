@@ -33,16 +33,6 @@ namespace SoftwareEngineeringProject
             };
         }
 
-        public static void SpawnMany(List<Enemy> target, Texture2D texture, params EnemySpec[] specs)
-        {
-            if (target == null) throw new ArgumentNullException(nameof(target));
-            if (texture == null) throw new ArgumentNullException(nameof(texture));
-            if (specs == null) return;
-
-            foreach (var s in specs)
-                target.Add(Create(s.Kind, texture, s.StartPosition));
-        }
-
         public static Enemy CreateCustom(Texture2D texture, Vector2 startPosition, float speed, int spriteStartX, int spriteStartY, bool wrap = false)
             => new Enemy(texture, startPosition, speed, spriteStartX, spriteStartY, wrap);
     }
