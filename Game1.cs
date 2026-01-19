@@ -93,7 +93,6 @@ namespace SoftwareEngineeringProject
 
             var solid = new HashSet<int> { 6, 7, 8, 28, 30, 35, 36, 39, 40, 41, 50, 51, 52, 57, 58, 100, 101, 102, 105, 106, 107, 127, 128, 129, 149, 150, 151, 188, 189, 190, 191, 233, 234 };
             var oneWay = new HashSet<int> { 61, 62, 63 };
-
             var gameOver = new HashSet<int> { 123, 124, 145, 146 };
             var startOver = new HashSet<int> { 216, 217, 238, 239 };
 
