@@ -120,7 +120,7 @@ namespace SoftwareEngineeringProject
             var heroRect = hero.GetCollisionBounds();
             if (heroRect != Rectangle.Empty)
             {
-                
+
                 foreach (var r in current.QuitTriggers)
                 {
                     if (heroRect.Intersects(r))
@@ -170,7 +170,21 @@ namespace SoftwareEngineeringProject
             foreach (var e in current.Enemies)
                 e.Update(gameTime, screenWidth, solidColliders);
 
-            base.Update(gameTime);
+            if (heroRect != Rectangle.Empty && levelManager.CurrentKey != "gameover")
+            {
+                foreach (var e in current.Enemies)
+                {
+                    var enemyRect = e.GetCollisionBounds();
+                    if (enemyRect != Rectangle.Empty && heroRect.Intersects(enemyRect))
+                    {
+                        levelManager.Load("gameover", hero, texture, GraphicsDevice.Viewport.Bounds);
+                        ApplyBackbufferForCurrentMap();
+                        return;
+                    }
+                }
+
+                base.Update(gameTime);
+            }
         }
 
         protected override void Draw(GameTime gameTime)

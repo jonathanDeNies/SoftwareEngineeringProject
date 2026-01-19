@@ -108,5 +108,11 @@ namespace SoftwareEngineeringProject
             var effects = speed < 0 ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
             spriteBatch.Draw(texture, position, animation.CurrentFrame.SourceRectangle, Color.White, 0f, Vector2.Zero, 1f, effects, 0f);
         }
+
+        public Rectangle GetCollisionBounds()
+        {
+            var frame = animation.CurrentFrame.SourceRectangle;
+            return new Rectangle((int)position.X, (int)position.Y, frame.Width, frame.Height);
+        }
     }
 }
